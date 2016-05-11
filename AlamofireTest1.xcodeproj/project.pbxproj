@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8459AF9C1CE2E6F500629405 /* PhotoDetailsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8459AF9B1CE2E6F500629405 /* PhotoDetailsViewController.swift */; };
 		8463EE991CE1E23C008A3219 /* BaseTabBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8463EE981CE1E23C008A3219 /* BaseTabBarViewController.swift */; };
 		8497122F1CDB018000E74A43 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8497122E1CDB018000E74A43 /* AppDelegate.swift */; };
 		849712311CDB018000E74A43 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 849712301CDB018000E74A43 /* ViewController.swift */; };
@@ -94,6 +95,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8459AF9B1CE2E6F500629405 /* PhotoDetailsViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotoDetailsViewController.swift; sourceTree = "<group>"; };
 		8463EE981CE1E23C008A3219 /* BaseTabBarViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BaseTabBarViewController.swift; sourceTree = "<group>"; };
 		8497122B1CDB018000E74A43 /* AlamofireTest1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlamofireTest1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8497122E1CDB018000E74A43 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -126,6 +128,7 @@
 				8463EE981CE1E23C008A3219 /* BaseTabBarViewController.swift */,
 				84E1F7EF1CDC423000F0728B /* PhotoBrowserCollectionViewController.swift */,
 				849D8EFF1CE072BD00F3D950 /* PhotoBrowserViewController.swift */,
+				8459AF9B1CE2E6F500629405 /* PhotoDetailsViewController.swift */,
 			);
 			name = ViewController;
 			sourceTree = "<group>";
@@ -315,6 +318,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8459AF9C1CE2E6F500629405 /* PhotoDetailsViewController.swift in Sources */,
 				84E1F7F01CDC423000F0728B /* PhotoBrowserCollectionViewController.swift in Sources */,
 				849712311CDB018000E74A43 /* ViewController.swift in Sources */,
 				8497122F1CDB018000E74A43 /* AppDelegate.swift in Sources */,
@@ -441,7 +445,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				EMBEDDED_CONTENT_CONTAINS_SWIFT = YES;
 				INFOPLIST_FILE = AlamofireTest1/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascade.AlamofireTest1;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -454,7 +458,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				EMBEDDED_CONTENT_CONTAINS_SWIFT = YES;
 				INFOPLIST_FILE = AlamofireTest1/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascade.AlamofireTest1;
 				PRODUCT_NAME = "$(TARGET_NAME)";

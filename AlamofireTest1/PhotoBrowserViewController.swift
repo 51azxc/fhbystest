@@ -15,8 +15,11 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
     var photoInfo: PhotoInfo?
     let spinner = UIActivityIndicatorView(activityIndicatorStyle: .WhiteLarge)
     let imageView = UIImageView()
-    let scrollView = UIScrollView()
+    //let scrollView = UIScrollView()
     
+    @IBOutlet weak var scrollView: UIScrollView!
+    @IBOutlet var singleTap: UITapGestureRecognizer!
+    @IBOutlet var doubleTap: UITapGestureRecognizer!
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -28,27 +31,31 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
         self.spinner.startAnimating()
         self.scrollView.addSubview(self.spinner)
         
-        scrollView.frame = view.bounds
-        scrollView.delegate = self
-        scrollView.minimumZoomScale = 1.0
-        scrollView.maximumZoomScale = 3.0
-        scrollView.zoomScale = 1.0
-        scrollView.backgroundColor = UIColor.blackColor()
-        view.addSubview(scrollView)
+//        self.automaticallyAdjustsScrollViewInsets = false
+        
+//        scrollView.frame = view.bounds
+//        scrollView.delegate = self
+//        scrollView.minimumZoomScale = 1.0
+//        scrollView.maximumZoomScale = 3.0
+//        scrollView.zoomScale = 1.0
+//        scrollView.backgroundColor = UIColor.blackColor()
+//        view.addSubview(scrollView)
         
         imageView.contentMode = .ScaleAspectFill
         scrollView.addSubview(imageView)
         
-        let doubleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(PhotoBrowserViewController.handleDoubleTap(_:)))
-        doubleTapRecognizer.numberOfTapsRequired = 2
-        doubleTapRecognizer.numberOfTouchesRequired = 1
-        scrollView.addGestureRecognizer(doubleTapRecognizer)
+        singleTap.requireGestureRecognizerToFail(doubleTap)
         
-        let singleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(PhotoBrowserViewController.handleSingleTap))
-        singleTapRecognizer.numberOfTapsRequired = 1
-        singleTapRecognizer.numberOfTouchesRequired = 1
-        singleTapRecognizer.requireGestureRecognizerToFail(doubleTapRecognizer)
-        scrollView.addGestureRecognizer(singleTapRecognizer)
+//        let doubleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(PhotoBrowserViewController.handleDoubleTap(_:)))
+//        doubleTapRecognizer.numberOfTapsRequired = 2
+//        doubleTapRecognizer.numberOfTouchesRequired = 1
+//        scrollView.addGestureRecognizer(doubleTapRecognizer)
+//        
+//        let singleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(PhotoBrowserViewController.handleSingleTap))
+//        singleTapRecognizer.numberOfTapsRequired = 1
+//        singleTapRecognizer.numberOfTouchesRequired = 1
+//        singleTapRecognizer.requireGestureRecognizerToFail(doubleTapRecognizer)
+//        scrollView.addGestureRecognizer(singleTapRecognizer)
         
         loadPhoto()
     }
@@ -75,14 +82,17 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
         super.viewWillTransitionToSize(size, withTransitionCoordinator: coordinator)
         
         coordinator.animateAlongsideTransition({ context in
-            self.scrollView.frame = CGRectMake(0, 0, size.width, size.height)
-            self.zoomInZoomOut(CGPointMake(size.width / 2, size.height / 2))
-            self.scrollView.zoomScale = 1
-            self.imageView.frame = self.centerFrameFromImage(self.imageView.image)
-            self.centerScrollViewContents()
+            
             }, completion: { finished in
                 
         })
+    }
+    
+    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+        if segue.identifier == "showDetails" {
+            let toViewController = segue.destinationViewController as! PhotoDetailsViewController
+            toViewController.photoInfo = self.photoInfo
+        }
     }
     
     override func preferredStatusBarStyle() -> UIStatusBarStyle {
@@ -143,14 +153,14 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
     }
     */
 
-    func handleSingleTap() {
+    @IBAction func handleSingleTap() {
         let hidden = navigationController?.navigationBar.hidden ?? false
         navigationController?.setNavigationBarHidden(!hidden, animated: true)
         navigationController?.setToolbarHidden(!hidden, animated: true)
-        UIApplication.sharedApplication().setStatusBarHidden(!hidden, withAnimation: .Slide)
+        //UIApplication.sharedApplication().setStatusBarHidden(!hidden, withAnimation: .Slide)
     }
     
-    func handleDoubleTap(recognizer: UITapGestureRecognizer) {
+    @IBAction func handleDoubleTap(recognizer: UITapGestureRecognizer) {
         let pointInView = recognizer.locationInView(self.imageView)
         self.zoomInZoomOut(pointInView)
     }
@@ -229,7 +239,10 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
     }
     
     func showDetails() {
+        let photoDetailsViewController = PhotoDetailsViewController()
+        photoDetailsViewController.photoInfo = self.photoInfo
         
+        performSegueWithIdentifier("showDetails", sender: nil)
     }
     
     func showComments() {
