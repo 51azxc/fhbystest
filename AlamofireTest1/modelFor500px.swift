@@ -9,26 +9,29 @@
 import UIKit
 import Alamofire
 
-@objc public protocol ResponseObjectSerializable {
-    init(response: NSHTTPURLResponse, representation: AnyObject)
+public protocol ResponseObjectSerializable {
+    init?(response: NSHTTPURLResponse, representation: AnyObject)
+}
+
+public protocol ResponseCollectionSerializable {
+    static func collection(response response: NSHTTPURLResponse, representation: AnyObject) -> [Self]
 }
 
 extension Alamofire.Request {
-    class func imageResponseSerializer() -> ResponseSerializer<UIImage, NSError> {
-        return ResponseSerializer { _, _, data, error in
+    
+    public func responseImage(completionHandler: Response<UIImage, NSError> -> Void) -> Self {
+        
+        let responseSerializer = ResponseSerializer<UIImage, NSError> { _, _, data, error in
             guard error == nil else { return .Failure(error!) }
             guard let imageData = data where imageData.length > 0 else {
-                //let error = Error.errorWithCode(.DataSerializationFailed, failureReason: "image not exists")
                 let error = NSError(domain: "Alamofire.Request.imageResponseSerializer", code: 10001, userInfo: [NSLocalizedFailureReasonErrorKey: "image not exists"])
                 return .Failure(error)
             }
             let image = UIImage(data: imageData, scale: UIScreen.mainScreen().scale)
             return Result.Success(image!)
         }
-    }
-    
-    public func responseImage(completionHandler: Response<UIImage, NSError> -> Void) -> Self {
-        return response(responseSerializer: Request.imageResponseSerializer(), completionHandler: completionHandler)
+        
+        return response(responseSerializer: responseSerializer, completionHandler: completionHandler)
     }
     
     public func responseObject<T: ResponseObjectSerializable>(completionHandler: Response<T, NSError> -> Void) -> Self {
@@ -41,11 +44,33 @@ extension Alamofire.Request {
             
             switch result {
             case .Success(let value):
-                if let res = response {
-                    let responseObject = T(response: res, representation: value)
+                if let response = response, let responseObject = T(response: response, representation: value) {
                     return .Success(responseObject)
                 } else {
                     let error = Error.errorWithCode(.JSONSerializationFailed, failureReason: "JSON could not be serialized into response object: \(value)")
+                    return .Failure(error)
+                }
+            case .Failure(let error):
+                return .Failure(error)
+            }
+        }
+        
+        return response(responseSerializer: responseSerializer, completionHandler: completionHandler)
+    }
+    
+    public func responseCollection<T: ResponseCollectionSerializable>(completionHandler: Response<[T], NSError> -> Void) -> Self {
+        let responseSerializer = ResponseSerializer<[T], NSError> { request, response, data, error in
+            guard error == nil else { return .Failure(error!) }
+            
+            let JSONSerializer = Request.JSONResponseSerializer(options: .AllowFragments)
+            let result = JSONSerializer.serializeResponse(request, response, data, error)
+            
+            switch result {
+            case .Success(let value):
+                if let res = response {
+                    return .Success(T.collection(response: res, representation: value))
+                } else {
+                    let error = Error.errorWithCode(.JSONSerializationFailed, failureReason: "Response collection could not be serialized due to nil response")
                     return .Failure(error)
                 }
             case .Failure(let error):
@@ -170,7 +195,7 @@ class PhotoInfo: NSObject, ResponseObjectSerializable {
         self.url = url
     }
     
-    required init(response: NSHTTPURLResponse, representation: AnyObject) {
+    required init?(response: NSHTTPURLResponse, representation: AnyObject) {
         self.id = representation.valueForKeyPath("photo.id") as! Int
         self.url = representation.valueForKeyPath("photo.image_url") as! String
         
@@ -204,7 +229,7 @@ class PhotoInfo: NSObject, ResponseObjectSerializable {
     }
 }
 
-class Comment {
+final class Comment: ResponseObjectSerializable, ResponseCollectionSerializable {
     let userFullname: String
     let userPictureURL: String
     let commentBody: String
@@ -213,6 +238,24 @@ class Comment {
         userFullname = JSON.valueForKeyPath("user.fullname") as! String
         userPictureURL = JSON.valueForKeyPath("user.userpic_url") as! String
         commentBody = JSON.valueForKeyPath("body") as! String
+    }
+    
+    required init?(response: NSHTTPURLResponse, representation: AnyObject) {
+        userFullname = representation.valueForKeyPath("user.fullname") as! String
+        userPictureURL = representation.valueForKeyPath("user.userpic_url") as! String
+        commentBody = representation.valueForKeyPath("body") as! String
+    }
+    
+    static func collection(response response: NSHTTPURLResponse, representation: AnyObject) -> [Comment] {
+        var comments: [Comment] = []
+        if let representation = representation.valueForKeyPath("comments") as? [NSDictionary] {
+            for commentRepresentation in representation {
+                if let comment = Comment(response: response, representation: commentRepresentation) {
+                    comments.append(comment)
+                }
+            }
+        }
+        return comments
     }
 }
 

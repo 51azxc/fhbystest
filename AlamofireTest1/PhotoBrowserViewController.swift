@@ -20,6 +20,8 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
     @IBOutlet weak var scrollView: UIScrollView!
     @IBOutlet var singleTap: UITapGestureRecognizer!
     @IBOutlet var doubleTap: UITapGestureRecognizer!
+    @IBOutlet weak var progressView: UIProgressView!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -92,6 +94,9 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
         if segue.identifier == "showDetails" {
             let toViewController = segue.destinationViewController as! PhotoDetailsViewController
             toViewController.photoInfo = self.photoInfo
+        } else if segue.identifier == "showComments" {
+            let toViewController = segue.destinationViewController as! PhotoCommentsViewController
+            toViewController.photoId = self.photoId
         }
     }
     
@@ -199,16 +204,6 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
         
         self.setToolbarItems(items, animated: true)
         navigationController?.setToolbarHidden(false, animated: true)
-        
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: userInfoViewForPhotoInfo(photoInfo!))
-    }
-    
-    func userInfoViewForPhotoInfo(photoInfo: PhotoInfo) -> UIView {
-        let userProfileImageView = UIImageView(frame: CGRect(x: 0, y: 10.0, width: 30.0, height: 30.0))
-        userProfileImageView.layer.cornerRadius = 3.0
-        userProfileImageView.layer.masksToBounds = true
-        
-        return userProfileImageView
     }
     
     func barButtonItemWithImageNamed(imageName: String?, title: String?, action: Selector? = nil) -> UIBarButtonItem {
@@ -239,23 +234,53 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
     }
     
     func showDetails() {
-        let photoDetailsViewController = PhotoDetailsViewController()
-        photoDetailsViewController.photoInfo = self.photoInfo
-        
         performSegueWithIdentifier("showDetails", sender: nil)
     }
     
     func showComments() {
-        
+        performSegueWithIdentifier("showComments", sender: nil)
     }
     
     func showActions() {
         let actionSheet = UIAlertController.init(title: "Download", message: "Download Photo", preferredStyle: .ActionSheet)
         actionSheet.addAction(UIAlertAction.init(title: "Confirm", style: .Destructive, handler: { action in
-            
+            self.downloadPhoto()
         }))
         actionSheet.addAction(UIAlertAction.init(title: "Cancel", style: .Cancel, handler: nil))
         self.presentViewController(actionSheet, animated: true, completion: nil)
+    }
+    
+    func downloadPhoto() {
+        Alamofire.request(modelFor500px.Router.PhotoInfo(photoInfo!.id, .XLarge)).validate().responseJSON() {
+            response in
+            guard response.result.error == nil else { return }
+            let dict = response.result.value as! NSDictionary
+            let imageURL = dict.valueForKeyPath("photo.image_url") as! String
+            let destination: (NSURL, NSHTTPURLResponse) -> (NSURL) = { temporaryURL, response in
+                let directoryURL = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)[0]
+                let pathComponent = response.suggestedFilename
+                
+                return directoryURL.URLByAppendingPathComponent("\(self.photoInfo!.id).\(pathComponent)")
+                
+            }
+            Alamofire.download(.GET, imageURL, destination: destination)
+                .progress { bytesRead, totalBytesRead, totalBytesExpectedToRead in
+                    
+                    dispatch_async(dispatch_get_main_queue()) {
+                        
+                        self.progressView.hidden = false
+                        self.progressView.setProgress(Float(totalBytesRead) / Float(totalBytesExpectedToRead), animated: true)
+                        
+                        if totalBytesRead == totalBytesExpectedToRead {
+                            self.progressView.hidden = true
+                        }
+                    }
+                
+                }.response { _, _, _, error in
+                    //self.progressView.progress = 0.0
+                    self.progressView.hidden = true
+            }
+        }
     }
     
     func loadPhoto() {

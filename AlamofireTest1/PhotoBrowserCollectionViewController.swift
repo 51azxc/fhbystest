@@ -17,6 +17,7 @@ class PhotoBrowserCollectionViewController: UICollectionViewController, UICollec
     
     let footerReuseidentifier = "FooterCell"
     let refreshControl = UIRefreshControl()
+    let imageCache = NSCache()
     
     var populatingPhotos = false
     var currentPage = 1
@@ -76,15 +77,23 @@ class PhotoBrowserCollectionViewController: UICollectionViewController, UICollec
         
         let imageURL = (photos[indexPath.row] as! PhotoInfo).url
         
-        cell.imageView.image = nil
-        
-        cell.request = Alamofire.request(.GET, imageURL).responseImage() {
-            response in
-            guard response.result.error == nil && response.result.value != nil else { return }
-            guard response.request?.URLString == cell.request?.request?.URLString else { return }
-            cell.imageView.image = response.result.value
+        if cell.request?.request?.URLString != imageURL {
+            cell.request?.cancel()
         }
-    
+        
+        if let image = self.imageCache.objectForKey(imageURL) as? UIImage {
+            cell.imageView.image = image
+        } else {
+            cell.imageView.image = nil
+            
+            cell.request = Alamofire.request(.GET, imageURL).validate(contentType:["image/*"]).responseImage() {
+                response in
+                guard response.result.error == nil && response.result.value != nil else { return }
+                guard response.request?.URLString == cell.request?.request?.URLString else { return }
+                self.imageCache.setObject(response.result.value!, forKey: (response.request?.URLString)!)
+                cell.imageView.image = response.result.value
+            }
+        }
         return cell
     }
     
@@ -161,7 +170,12 @@ class PhotoBrowserCollectionViewController: UICollectionViewController, UICollec
     }
     
     func handleRefresh() {
-        
+        refreshControl.beginRefreshing()
+        self.photos.removeAllObjects()
+        self.currentPage = 1
+        self.collectionView?.reloadData()
+        refreshControl.endRefreshing()
+        populatePhotos()
     }
 
 }
