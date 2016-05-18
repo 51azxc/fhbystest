@@ -13,6 +13,7 @@ class PhotoCommentsViewController: UITableViewController {
     
     var photoId = 0
     var comments: [Comment]?
+    var loadingView: LoadingView2!
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,6 +23,10 @@ class PhotoCommentsViewController: UITableViewController {
 
         // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
         // self.navigationItem.rightBarButtonItem = self.editButtonItem()
+        
+        loadingView = LoadingView2(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
+        loadingView.center = CGPointMake(self.view.center.x, self.view.center.y - self.view.bounds.origin.y / 2.0)
+        view.addSubview(loadingView)
         
         navigationController?.setNavigationBarHidden(false, animated: true)
         
@@ -36,6 +41,7 @@ class PhotoCommentsViewController: UITableViewController {
             guard response.result.error == nil else { return }
             self.comments = response.result.value
             self.tableView.reloadData()
+            self.loadingView.removeFromSuperview()
         }
     }
 

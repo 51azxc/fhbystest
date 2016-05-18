@@ -1,42 +1,73 @@
 //
-//  PhotoBrowserViewController.swift
+//  RxPhotoViewController.swift
 //  AlamofireTest1
 //
-//  Created by alun on 16/5/9.
+//  Created by alun on 16/5/17.
 //  Copyright © 2016年 cascade. All rights reserved.
 //
 
 import UIKit
 import Alamofire
+import RxSwift
+import RxCocoa
 
-class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
+class RxPhotoViewController: UIViewController, UIScrollViewDelegate {
 
     var photoId: Int = 0
     var photoInfo: PhotoInfo?
     let spinner = UIActivityIndicatorView(activityIndicatorStyle: .WhiteLarge)
     let imageView = UIImageView()
-    var loadingView: LoadingView1!
-    
-    @IBOutlet weak var scrollView: UIScrollView!
-    @IBOutlet var singleTap: UITapGestureRecognizer!
-    @IBOutlet var doubleTap: UITapGestureRecognizer!
-    @IBOutlet weak var progressView: UIProgressView!
+    let scrollView = UIScrollView()
+    let disposeBag = DisposeBag()
+    let vm = PhotoBrowserViewModel()
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
         // Do any additional setup after loading the view.
         
-        loadingView = LoadingView1(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
-        loadingView.center = CGPointMake(self.view.center.x, self.view.center.y - self.view.bounds.origin.y / 2.0)
-        view.addSubview(loadingView)
+        self.navigationController?.setNavigationBarHidden(true, animated: true)
+        self.spinner.center = CGPointMake(self.view.center.x, self.view.center.y - self.view.bounds.origin.y / 2.0)
+        self.spinner.hidesWhenStopped = true
+        self.spinner.startAnimating()
+        self.scrollView.addSubview(self.spinner)
         
+        self.automaticallyAdjustsScrollViewInsets = false
+        
+        scrollView.frame = view.bounds
+        scrollView.delegate = self
+        scrollView.minimumZoomScale = 1.0
+        scrollView.maximumZoomScale = 3.0
+        scrollView.zoomScale = 1.0
+        scrollView.backgroundColor = UIColor.blackColor()
+        view.addSubview(scrollView)
+
         imageView.contentMode = .ScaleAspectFill
         scrollView.addSubview(imageView)
         
-        singleTap.requireGestureRecognizerToFail(doubleTap)
+        let doubleTapRecognizer = UITapGestureRecognizer()
+        doubleTapRecognizer.numberOfTapsRequired = 2
+        doubleTapRecognizer.numberOfTouchesRequired = 1
+        
+        doubleTapRecognizer.rx_event.subscribeNext { [unowned self]recognizer in
+            let pointInView = recognizer.locationInView(self.imageView)
+            self.zoomInZoomOut(pointInView)
+        }.addDisposableTo(disposeBag)
+        
+        scrollView.addGestureRecognizer(doubleTapRecognizer)
+        let singleTapRecognizer = UITapGestureRecognizer()
+        singleTapRecognizer.rx_event.subscribeNext { [unowned self]recognizer in
+            let hidden = self.navigationController?.navigationBar.hidden ?? false
+            self.navigationController?.setNavigationBarHidden(!hidden, animated: true)
+            self.navigationController?.setToolbarHidden(!hidden, animated: true)
+        }.addDisposableTo(disposeBag)
+        singleTapRecognizer.numberOfTapsRequired = 1
+        singleTapRecognizer.numberOfTouchesRequired = 1
+        singleTapRecognizer.requireGestureRecognizerToFail(doubleTapRecognizer)
+        scrollView.addGestureRecognizer(singleTapRecognizer)
         
         loadPhoto()
+        
     }
     
     override func viewWillAppear(animated: Bool) {
@@ -57,28 +88,11 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
         // Dispose of any resources that can be recreated.
     }
     
-    override func viewWillTransitionToSize(size: CGSize, withTransitionCoordinator coordinator: UIViewControllerTransitionCoordinator) {
-        super.viewWillTransitionToSize(size, withTransitionCoordinator: coordinator)
-        
-        coordinator.animateAlongsideTransition({ context in
-            
-            }, completion: { finished in
-                
-        })
-    }
-    
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-        if segue.identifier == "showDetails" {
-            let toViewController = segue.destinationViewController as! PhotoDetailsViewController
-            toViewController.photoInfo = self.photoInfo
-        } else if segue.identifier == "showComments" {
-            let toViewController = segue.destinationViewController as! PhotoCommentsViewController
+        if segue.identifier == "showComments" {
+            let toViewController = segue.destinationViewController as! RxPhotoCommentsViewController
             toViewController.photoId = self.photoId
         }
-    }
-    
-    override func preferredStatusBarStyle() -> UIStatusBarStyle {
-        return UIStatusBarStyle.Default
     }
     
     func scrollViewDidZoom(scrollView: UIScrollView) {
@@ -89,6 +103,7 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
         return self.imageView
     }
     
+
     func centerScrollViewContents() {
         let boundsSize = scrollView.frame
         var contentsFrame = self.imageView.frame
@@ -124,18 +139,6 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
         
         return centerFrame
     }
-
-    @IBAction func handleSingleTap() {
-        let hidden = navigationController?.navigationBar.hidden ?? false
-        navigationController?.setNavigationBarHidden(!hidden, animated: true)
-        navigationController?.setToolbarHidden(!hidden, animated: true)
-        //UIApplication.sharedApplication().setStatusBarHidden(!hidden, withAnimation: .Slide)
-    }
-    
-    @IBAction func handleDoubleTap(recognizer: UITapGestureRecognizer) {
-        let pointInView = recognizer.locationInView(self.imageView)
-        self.zoomInZoomOut(pointInView)
-    }
     
     func zoomInZoomOut(point: CGPoint!) {
         let newZoomScale = self.scrollView.zoomScale > (self.scrollView.maximumZoomScale/2) ? self.scrollView.minimumZoomScale : self.scrollView.maximumZoomScale
@@ -156,14 +159,14 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
         var items = [UIBarButtonItem]()
         
         let flexibleSpace = UIBarButtonItem(barButtonSystemItem: .FlexibleSpace, target: nil, action: nil)
-        items.append(barButtonItemWithImageNamed("hamburger", title: nil, action: #selector(PhotoBrowserViewController.showDetails)))
+        items.append(barButtonItemWithImageNamed("hamburger", title: nil, action: nil))
         
         if photoInfo?.commentsCount > 0 {
-            items.append(barButtonItemWithImageNamed("bubble", title: "\(photoInfo?.commentsCount ?? 0)", action: #selector(PhotoBrowserViewController.showComments)))
+            items.append(barButtonItemWithImageNamed("bubble", title: "\(photoInfo?.commentsCount ?? 0)", action: #selector(RxPhotoViewController.showComments)))
         }
         
         items.append(flexibleSpace)
-        items.append(UIBarButtonItem(barButtonSystemItem: UIBarButtonSystemItem.Action, target: self, action: #selector(PhotoBrowserViewController.showActions)))
+        items.append(UIBarButtonItem(barButtonSystemItem: UIBarButtonSystemItem.Action, target: self, action: #selector(RxPhotoViewController.showActions)))
         items.append(flexibleSpace)
         
         items.append(barButtonItemWithImageNamed("like", title: "\(photoInfo?.votesCount ?? 0)"))
@@ -200,10 +203,6 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
         return barButton
     }
     
-    func showDetails() {
-        performSegueWithIdentifier("showDetails", sender: nil)
-    }
-    
     func showComments() {
         performSegueWithIdentifier("showComments", sender: nil)
     }
@@ -218,61 +217,54 @@ class PhotoBrowserViewController: UIViewController, UIScrollViewDelegate {
     }
     
     func downloadPhoto() {
-        Alamofire.request(modelFor500px.Router.PhotoInfo(photoInfo!.id, .XLarge)).validate().responseJSON() {
-            response in
-            guard response.result.error == nil else { return }
-            let dict = response.result.value as! NSDictionary
-            let imageURL = dict.valueForKeyPath("photo.image_url") as! String
-            let destination: (NSURL, NSHTTPURLResponse) -> (NSURL) = { temporaryURL, response in
-                let directoryURL = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)[0]
-                let pathComponent = response.suggestedFilename
-                
-                return directoryURL.URLByAppendingPathComponent("\(self.photoInfo!.id).\(pathComponent)")
-                
-            }
+        vm.getPhotoUrl(photoInfo!.id).subscribeNext { [unowned self](imageURL, destination) in
+            let progressIndicatorView = UIProgressView(frame: CGRect(x: 0.0, y: 66, width: self.view.bounds.width, height: 10.0))
+            self.view.addSubview(progressIndicatorView)
+            
             Alamofire.download(.GET, imageURL, destination: destination)
                 .progress { bytesRead, totalBytesRead, totalBytesExpectedToRead in
                     
                     dispatch_async(dispatch_get_main_queue()) {
                         
-                        self.progressView.hidden = false
-                        self.progressView.setProgress(Float(totalBytesRead) / Float(totalBytesExpectedToRead), animated: true)
+                        let progress = Float(totalBytesRead) / Float(totalBytesExpectedToRead)
+                        progressIndicatorView.setProgress(progress, animated: true)
                         
                         if totalBytesRead == totalBytesExpectedToRead {
-                            self.progressView.hidden = true
+                            progressIndicatorView.removeFromSuperview()
                         }
                     }
-                
+                    
                 }.response { _, _, _, error in
-                    //self.progressView.progress = 0.0
-                    self.progressView.hidden = true
+                    progressIndicatorView.removeFromSuperview()
             }
-        }
+            
+        }.addDisposableTo(disposeBag)
     }
     
     func loadPhoto() {
-        Alamofire.request(modelFor500px.Router.PhotoInfo(self.photoId, .Large))
-            .validate()
-            .responseObject() { (response: Response<PhotoInfo, NSError>) in
-                
-                guard response.result.error == nil else { return }
-                
-                self.photoInfo = response.result.value
-                dispatch_async(dispatch_get_main_queue()) {
-                    self.addBottomBar()
-                    self.title = self.photoInfo!.name
-                }
-                
-                Alamofire.request(.GET, self.photoInfo!.url)
-                    .responseImage() { response in
-                      
-                        guard response.result.error == nil && response.result.value != nil else { return }
-                        self.imageView.image = response.result.value
-                        self.imageView.frame = self.centerFrameFromImage(response.result.value)
-                        self.centerScrollViewContents()
-                        //self.spinner.stopAnimating()
-                        self.loadingView.removeFromSuperview()
-                }
-        }
+        let photoSubject = PublishSubject<String>()
+        vm.getPhoto(self.photoId, imageSize: .Large)
+            .observeOn(SerialDispatchQueueScheduler(globalConcurrentQueueQOS: .Background))
+            .map { object in
+                object as! PhotoInfo
+            }
+            .observeOn(MainScheduler.instance)
+            .subscribeNext { [unowned self]photoInfo in
+                self.photoInfo = photoInfo
+                self.addBottomBar()
+                self.title = self.photoInfo!.name
+                photoSubject.on(.Next(photoInfo.url))
+        }.addDisposableTo(disposeBag)
+        
+        photoSubject.flatMap { [unowned self]url in
+            self.vm.getImage(url)
+            }.map { object in
+                object as! UIImage
+            }.subscribeNext { [unowned self]image in
+                self.imageView.image = image
+                self.imageView.frame = self.centerFrameFromImage(image)
+                self.centerScrollViewContents()
+                self.spinner.stopAnimating()
+        }.addDisposableTo(disposeBag)
     }
 }
